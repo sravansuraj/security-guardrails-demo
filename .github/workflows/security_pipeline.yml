@@ -1,0 +1,21 @@
+name: Security Pipeline
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+
+jobs:
+  dependency-scan:
+    name: Dependency Vulnerability Scan using Trivy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install and Run Trivy Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          severity: HIGH,CRITICAL
