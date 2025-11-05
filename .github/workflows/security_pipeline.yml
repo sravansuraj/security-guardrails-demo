@@ -14,8 +14,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install and Run Trivy Scan
+      - name: Run Trivy Scan
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
           severity: HIGH,CRITICAL
+          exit-code: 1
+          ignore-unfixed: false
