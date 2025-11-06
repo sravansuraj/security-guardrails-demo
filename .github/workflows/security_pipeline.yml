@@ -22,7 +22,6 @@ jobs:
           exit-code: 1
           ignore-unfixed: false
 
-
   snyk-scan:
     name: Snyk Dependency Scan
     runs-on: ubuntu-latest
