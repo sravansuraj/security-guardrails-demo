@@ -6,6 +6,7 @@ on:
   pull_request:
 
 jobs:
+
   dependency-scan:
     name: Dependency Vulnerability Scan using Trivy
     runs-on: ubuntu-latest
@@ -21,3 +22,60 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: 1
           ignore-unfixed: false
+
+
+  snyk-scan:
+    name: Snyk Dependency Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run Snyk Test
+        run: snyk test --severity-threshold=high
+
+
+  tfsec-scan:
+    name: IaC Compliance (tfsec)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install tfsec
+        uses: aquasecurity/tfsec-action@v1
+
+      - name: Run tfsec (JSON + SARIF output)
+        run: |
+          mkdir -p reports
+          tfsec . --format=json > reports/tfsec.json || true
+          tfsec . --format=sarif > reports/tfsec.sarif || true
+
+      - name: Upload tfsec JSON artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfsec-json
+          path: reports/tfsec.json
+
+      - name: Upload SARIF to Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: reports/tfsec.sarif
