@@ -1,4 +1,4 @@
-# Intentionally insecure Terraform for tfsec demo
+# Intentionally insecure Terraform (now fixed for tfsec)
 
 terraform {
   required_version = ">= 0.13.0"
@@ -14,17 +14,17 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# 1) Security Group with world-open ingress (HIGH finding)
+# Security Group with restricted ingress (fixed)
 resource "aws_security_group" "demo_sg" {
   name        = "tfsec-demo-sg"
-  description = "Intentionally open ingress for tfsec test"
+  description = "Restricted ingress for tfsec test"
 
   ingress {
-    description = "SSH from anywhere"
+    description = "SSH from VPC"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # <- tfsec: aws-vpc-no-public-ingress
+    cidr_blocks = ["10.0.0.0/16"] # Restricted instead of 0.0.0.0/0
   }
 
   egress {
@@ -35,11 +35,22 @@ resource "aws_security_group" "demo_sg" {
   }
 }
 
-# 2) S3 bucket without default encryption (HIGH finding)
+# S3 bucket (no encryption initially)
 resource "aws_s3_bucket" "demo_bucket" {
   bucket = "tfsec-demo-bucket-${random_id.rand.hex}"
 }
 
 resource "random_id" "rand" {
   byte_length = 4
+}
+
+# Added: S3 bucket default encryption (fix for tfsec)
+resource "aws_s3_bucket_server_side_encryption_configuration" "demo_bucket_encryption" {
+  bucket = aws_s3_bucket.demo_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
 }
