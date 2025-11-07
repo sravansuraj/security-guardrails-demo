@@ -1,23 +1,76 @@
 name: Security Pipeline
 
 on:
+  pull_request:
   push:
     branches: [ "**" ]
-  pull_request:
 
 jobs:
-  dependency-scan:
-    name: Dependency Vulnerability Scan using Trivy
+
+  trivy-scan:
+    name: Dependency Vulnerability Scan (Trivy)
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Install Trivy
+        run: |
+          sudo apt-get update
+          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy -y
+
       - name: Run Trivy Scan
-        uses: aquasecurity/trivy-action@master
+        run: trivy fs . --severity HIGH,CRITICAL --exit-code 1
+
+
+  snyk-scan:
+    name: Snyk Dependency Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          scan-type: fs
-          severity: HIGH,CRITICAL
-          exit-code: 1
-          ignore-unfixed: false
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run Snyk Test
+        run: snyk test --severity-threshold=high
+
+
+  tfsec-scan:
+    name: IaC Compliance (tfsec)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run tfsec on Terraform code
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: infra
+          additional_args: --format sarif --out tfsec-results.sarif
+
+      - name: Upload tfsec SARIF to Code Scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: tfsec-results.sarif
