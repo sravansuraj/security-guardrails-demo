@@ -1,4 +1,4 @@
-# Intentionally insecure Terraform for tfsec testing
+# Secure Terraform for tfsec passing
 
 terraform {
   required_providers {
@@ -13,17 +13,17 @@ provider "aws" {
   region = "us-east-1"
 }
 
-# ❌ Security Group open to the world (tfsec will flag this)
+# ✅ FIXED: Restricted ingress (no 0.0.0.0/0)
 resource "aws_security_group" "demo_sg" {
   name        = "tfsec-demo-sg"
-  description = "Intentionally open ingress for tfsec test"
+  description = "Restricted ingress for tfsec test"
 
   ingress {
-    description = "SSH from anywhere"
+    description = "SSH from VPC"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["10.0.0.0/16"]
   }
 
   egress {
@@ -34,47 +34,17 @@ resource "aws_security_group" "demo_sg" {
   }
 }
 
-# ❌ S3 bucket without encryption (tfsec will flag this)
+# ✅ FIXED: S3 bucket WITH encryption enabled
 resource "aws_s3_bucket" "demo_bucket" {
   bucket = "tfsec-demo-bucket"
 }
-# Intentionally insecure Terraform for tfsec testing
 
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
+resource "aws_s3_bucket_server_side_encryption_configuration" "bucket_enc" {
+  bucket = aws_s3_bucket.demo_bucket.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
     }
   }
-}
-
-provider "aws" {
-  region = "us-east-1"
-}
-
-# ❌ Security Group open to the world (tfsec will flag this)
-resource "aws_security_group" "demo_sg" {
-  name        = "tfsec-demo-sg"
-  description = "Intentionally open ingress for tfsec test"
-
-  ingress {
-    description = "SSH from anywhere"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
-# ❌ S3 bucket without encryption (tfsec will flag this)
-resource "aws_s3_bucket" "demo_bucket" {
-  bucket = "tfsec-demo-bucket"
 }
