@@ -2,11 +2,11 @@ name: Security Pipeline
 
 on:
   push:
-    branches: [ "**" ]
+    branches: ["*"]
   pull_request:
 
 jobs:
-  dependency-scan:
+  trivy-scan:
     name: Dependency Vulnerability Scan using Trivy
     runs-on: ubuntu-latest
 
@@ -21,3 +21,43 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: 1
           ignore-unfixed: false
+
+  snyk-scan:
+    name: Snyk Dependency Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Authenticate Snyk
+        run: snyk auth ${{ secrets.SNYK_TOKEN }}
+
+      - name: Run Snyk Test
+        run: snyk test --severity-threshold=high
+
+  tfsec-scan:
+    name: IaC Compliance (tfsec)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          soft_fail: false
