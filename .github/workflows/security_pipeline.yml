@@ -60,22 +60,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install tfsec
+      - name: Run tfsec on infra folder
         uses: aquasecurity/tfsec-action@v1.0.3
-
-      - name: Run tfsec (JSON + SARIF output)
-        run: |
-          mkdir -p reports
-          tfsec . --format=json > reports/tfsec.json || true
-          tfsec . --format=sarif > reports/tfsec.sarif || true
-
-      - name: Upload tfsec JSON artifact
-        uses: actions/upload-artifact@v4
         with:
-          name: tfsec-json
-          path: reports/tfsec.json
+          working_directory: infra
+          additional_args: --format sarif --out tfsec-results.sarif
 
-      - name: Upload SARIF to Code Scanning
+      - name: Upload tfsec SARIF to Code Scanning
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: reports/tfsec.sarif
+          sarif_file: tfsec-results.sarif
