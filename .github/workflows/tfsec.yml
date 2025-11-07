@@ -1,0 +1,19 @@
+name: tfsec IaC Scan
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  tfsec-scan:
+    name: Run tfsec on Terraform code
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+        with:
+          working_directory: infra
